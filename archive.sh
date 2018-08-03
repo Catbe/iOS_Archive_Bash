@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#你们证书的teamID xcode可以查看，或者去钥匙串查看
+teamID=""
+
 # 换行符
 __LINE_BREAK_LEFT="\n\033[32;1m"
 __LINE_BREAK_RIGHT="\033[0m\n"
@@ -11,23 +14,15 @@ export FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=120
 SECONDS=0
 
 echo "============================================================================"
-echo "                              😁 温馨提示  😆"
-echo " 运行此脚本前，请您正确填写脚本同路径下的ExportOptions.plist所需相关信息"
-echo "                         否则会导致打包失败 ☹️  ☹️  ☹️"
+echo "                              😁 温馨提示😆"
+echo " 运行此脚本前，请您打开此脚本填写证书对应的teamID；否则会导致打包失败 ☹️  ☹️  ☹️"
+echo "                          如果设置过，请忽略我~~~~~"
 echo -e "============================================================================\n "
 
-printf "\n\033[32;1m是否已经填写ExportOptions.plist (y/n)?\033[0m   "
-while :
-do
-    read already
-    if [ $already = "y" ] || [ $already = "yes" ]; then
-        break
-    elif [ $already = "n" ] || [ $already = "no" ]; then
-        exit
-    else
-        echo "输入有误，请重新输入"
-    fi
-done
+if [ -z $teamID ]; then
+    printf "\033[28;1;5m请先打开此文件，设置teamID再执行\033[0m\n"
+    exit
+fi
 
 # 判断脚本所在目录是否存在工程文件
 hasWorkspace=false
@@ -42,8 +37,7 @@ if [ -e ./*.xcodeproj ]; then
 fi
 
 if [ $hasWorkspace == false ] && [ $hasProject == false ]; then
-    echo "未找到工程文件 ☹️"
-    echo "请将脚本放在工程目录下 😁  😁  😆"
+    echo "未找到工程文件， 请将脚本放在工程目录下 ☹️"
     exit
 fi
 
@@ -139,13 +133,16 @@ ipa_path="$output_path/${scheme}"
 
 mkdir $output_path
 
+#生成打包需要的ExportOptions.plist文件
+. ./exportOptions.sh $teamID $export_method $output_path
+
 if [ $hasWorkspace == true ]; then
     xcodebuild archive  -workspace ${workspace_path} -scheme ${scheme} -configuration ${configuration} -archivePath ${archive_path}
 else
     xcodebuild archive  -project ${project_path} -scheme ${scheme} -configuration ${configuration} -archivePath ${archive_path}
 fi
 
-xcodebuild -exportArchive -archivePath ${archive_path} -exportPath ${ipa_path} -exportOptionsPlist ./ExportOptions.plist
+xcodebuild -exportArchive -archivePath ${archive_path} -exportPath ${ipa_path} -exportOptionsPlist $output_path/ExportOptions.plist
 
 #输出总用时
 echo "🎉  🎉  🎉  打包成功  🎉  🎉  🎉"
